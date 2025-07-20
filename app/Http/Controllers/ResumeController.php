@@ -52,12 +52,15 @@ class ResumeController extends Controller
         ]);
 
         foreach ($validated['resume_files'] as $file) {
-            Resume::create([
+            // Buat record resume di database
+            $resume = Resume::create([
                 'user_id' => Auth::id(),
                 'original_filename' => $file->getClientOriginalName(),
                 'storage_path' => $file->store('resumes', 'public'),
                 'status' => 'pending',
             ]);
+
+            AnalyzeResumeJob::dispatch($resume);
         }
 
         return redirect()->back()->with('success', count($validated['resume_files']) . ' resume berhasil di-upload.');
@@ -72,23 +75,6 @@ class ResumeController extends Controller
         return Inertia::render('resume/show', [
             'resume' => $resume,
         ]);
-    }
-
-    public function analyzeBatch()
-    {
-        $pendingResumes = Auth::user()->resumes()
-            ->where('status', 'pending')
-            ->get();
-
-        if ($pendingResumes->isEmpty()) {
-            return redirect()->back()->with('info', 'Tidak ada resume yang perlu dianalisis.');
-        }
-
-        foreach ($pendingResumes as $resume) {
-            AnalyzeResumeJob::dispatch($resume);
-        }
-
-        return redirect()->back()->with('success', 'Proses analisis dimulai untuk ' . $pendingResumes->count() . ' resume.');
     }
 
     public function candidates()
