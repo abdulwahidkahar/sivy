@@ -12,9 +12,6 @@ use Inertia\Inertia;
 
 class ResumeController extends Controller
 {
-    /**
-     * Menampilkan halaman Dashboard dengan data resume terakhir.
-     */
     public function index()
     {
         $user = Auth::user();
@@ -24,13 +21,12 @@ class ResumeController extends Controller
             ->take(10)
             ->get();
 
-        $averageScore = $user->resumes()
+        $completedResumes = $user->resumes()
             ->where('status', 'completed')
             ->whereNotNull('analysis_result')
-            ->get()
-            ->avg(function ($resume) {
-                return data_get($resume->analysis_result, 'skor_kecocokan', 0);
-            });
+            ->get();
+
+        $averageScore = round($completedResumes->avg(fn($resume) => data_get($resume->analysis_result, 'skor_kecocokan', 0)) ?? 0, 2);
 
         return Inertia::render('dashboard', [
             'resumes' => $resumes,
@@ -40,49 +36,36 @@ class ResumeController extends Controller
                     ->whereMonth('created_at', now()->month)
                     ->whereYear('created_at', now()->year)
                     ->count(),
-                'averageScore' => round($averageScore ?? 0, 2),
+                'averageScore' => $averageScore,
             ],
         ]);
     }
 
-    /**
-     * Upload file resume via form Inertia.
-     */
     public function store(Request $request)
     {
-        // PENYESUAIAN: Batasi upload hanya untuk PDF agar sesuai dengan kemampuan AnalyzeResumeJob
         $validated = $request->validate([
-            'resume_files'   => 'required|array|min:1',
-            'resume_files.*' => 'required|file|mimes:pdf|max:5120', // Hanya izinkan PDF
+            'resume_files' => 'required|array|min:1',
+            'resume_files.*' => 'required|file|mimes:pdf|max:5120',
         ], [
             'resume_files.*.mimes' => 'Untuk saat ini, hanya file format .pdf yang didukung.',
             'resume_files.*.max' => 'Ukuran setiap file tidak boleh lebih dari 5MB.',
         ]);
 
         foreach ($validated['resume_files'] as $file) {
-            $path = $file->store('resumes', 'public');
-
             Resume::create([
-                'user_id'           => Auth::id(),
+                'user_id' => Auth::id(),
                 'original_filename' => $file->getClientOriginalName(),
-                'storage_path'      => $path,
-                'status'            => 'pending',
-                'analysis_result'   => null,
+                'storage_path' => $file->store('resumes', 'public'),
+                'status' => 'pending',
             ]);
         }
 
-        $fileCount = count($validated['resume_files']);
-        $message = $fileCount . ' resume berhasil di-upload.';
-
-        return redirect()->back()->with('success', $message);
+        return redirect()->back()->with('success', count($validated['resume_files']) . ' resume berhasil di-upload.');
     }
 
     public function show(Resume $resume)
     {
-        \Log::info('Resume User ID:', ['id' => $resume->user_id]);
-        \Log::info('Auth ID:', ['id' => Auth::id()]);
-
-        if($resume->user_id != Auth::id()){
+        if ($resume->user_id !== Auth::id()) {
             abort(403, 'UNAUTHORIZED ACTION');
         }
 
@@ -91,9 +74,6 @@ class ResumeController extends Controller
         ]);
     }
 
-    /**
-     * Jalankan proses analisis via tombol di UI.
-     */
     public function analyzeBatch()
     {
         $pendingResumes = Auth::user()->resumes()
@@ -105,33 +85,23 @@ class ResumeController extends Controller
         }
 
         foreach ($pendingResumes as $resume) {
-            try {
-                AnalyzeResumeJob::dispatch($resume);
-            } catch (\Exception $e) {
-                Log::error("Gagal mengirim job untuk resume ID: {$resume->id}. Error: " . $e->getMessage());
-            }
+            AnalyzeResumeJob::dispatch($resume);
         }
 
-        $jobCount = $pendingResumes->count();
-        return redirect()->back()->with('success', "Proses analisis dimulai untuk {$jobCount} resume.");
+        return redirect()->back()->with('success', 'Proses analisis dimulai untuk ' . $pendingResumes->count() . ' resume.');
     }
 
     public function candidates()
     {
-        $user = Auth::user();
-
-        // Ambil SEMUA resume yang sudah 'completed' dan urutkan dari skor tertinggi
-        $candidates = $user->resumes()
+        $candidates = Auth::user()->resumes()
             ->where('status', 'completed')
             ->whereNotNull('analysis_result')
             ->get()
-            ->sortByDesc(function ($resume) {
-                return data_get($resume->analysis_result, 'skor_kecocokan', 0);
-            });
+            ->sortByDesc(fn($resume) => data_get($resume->analysis_result, 'skor_kecocokan', 0))
+            ->values();
 
-        // Kirim data 'candidates' ke komponen
         return Inertia::render('candidates/index', [
-            'candidates' => $candidates->values()->all(),
+            'candidates' => $candidates,
         ]);
     }
 }
