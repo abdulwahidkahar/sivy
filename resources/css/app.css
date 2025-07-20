@@ -157,3 +157,28 @@
         @apply bg-background text-foreground;
     }
 }
+
+@keyframes spin-slow {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes siri-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.9;
+    }
+}
+
+.animate-spin-slow {
+    animation: spin-slow 6s linear infinite;
+}
+
+.animate-siri-pulse {
+    animation: siri-pulse 3s ease-in-out infinite;
+}
+
