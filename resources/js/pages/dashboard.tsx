@@ -2,7 +2,7 @@ import { Head, usePage, useForm, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { toast } from 'sonner';
-import { type FormEvent, useEffect } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { IconCircleCheckFilled, IconLoader, IconCircleXFilled, IconClock } from '@tabler/icons-react';
 
@@ -67,6 +67,21 @@ interface PageProps {
 export default function Dashboard() {
     const { resumes, stats, flash } = usePage<PageProps>().props;
 
+    const [selectedRole, setSelectedRole] = useState('Backend Developer');
+
+    const roleDropdown = (
+        <select
+            value={selectedRole}
+            onChange={(e) => setSelectedRole(e.target.value)}
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
+        >
+            <option>Backend Developer</option>
+            <option>Frontend Developer</option>
+            <option>DevOps</option>
+            <option>Project Owner</option>
+        </select>
+    );
+
     const {
         data,
         setData,
@@ -107,8 +122,8 @@ export default function Dashboard() {
     };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Dashboard" />
+        <AppLayout breadcrumbs={breadcrumbs} headerRight={roleDropdown}>
+        <Head title="Dashboard" />
             <div className="flex flex-col gap-6 p-6 md:gap-8">
                 {/* Stats */}
                 <div className="grid gap-6 md:grid-cols-3">
