@@ -1,14 +1,135 @@
 import { Head, usePage, useForm, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { type BreadcrumbItem } from '@/types';
+import { type BreadcrumbItem, type PageProps as InertiaPageProps } from '@/types';
 import { toast } from 'sonner';
 import { type FormEvent, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { IconCircleCheckFilled, IconLoader, IconCircleXFilled, IconClock } from '@tabler/icons-react';
+import { IconCircleCheckFilled, IconLoader, IconCircleXFilled, IconClock, IconPlus, IconX } from '@tabler/icons-react';
 
+// --- INTERFACE BARU SESUAI DATA DARI BACKEND ---
+interface Role {
+    id: number;
+    name: string;
+}
+
+interface Analysis {
+    id: number;
+    status: string;
+    created_at: string;
+    resume: {
+        id: number;
+        original_filename: string;
+    };
+}
+
+interface PageProps extends InertiaPageProps {
+    recentAnalyses: Analysis[];
+    stats: {
+        total: number;
+        newThisMonth: number;
+        averageScore: number;
+    };
+    roles: Role[];
+    flash?: {
+        success?: string;
+        info?: string;
+        error?: string;
+    };
+}
+
+// --- KOMPONEN BARU: MODAL UNTUK MEMBUAT PROFIL ---
+function CreateRoleModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        name: '',
+        requirement: '',
+        culture: '',
+    });
+
+    const handleSubmit = (e: FormEvent) => {
+        e.preventDefault();
+        post(route('roles.store'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                onClose();
+                reset();
+                toast.success('Profil baru berhasil dibuat!');
+            },
+            onError: () => {
+                toast.error('Gagal membuat profil. Periksa kembali isian Anda.');
+            },
+        });
+    };
+
+    // Efek untuk mereset form setiap kali modal dibuka
+    useEffect(() => {
+        if (isOpen) {
+            reset();
+        }
+    }, [isOpen]);
+
+    if (!isOpen) {
+        return null;
+    }
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+        >
+            <div
+                className="w-full max-w-lg rounded-xl border bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 animate-in fade-in-0 zoom-in-95"
+                onClick={(e) => e.stopPropagation()} // Mencegah modal tertutup saat diklik di dalam
+            >
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Buat Profil Analisis Baru</h2>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-neutral-700">
+                        <IconX size={20} />
+                    </button>
+                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Profil</label>
+                        <input
+                            id="name"
+                            type="text"
+                            value={data.name}
+                            onChange={(e) => setData('name', e.target.value)}
+                            className="w-full rounded-md border-gray-300 shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
+                            placeholder="Contoh: Backend Developer (Laravel)"
+                        />
+                        {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
+                    </div>
+                    <div>
+                        <label htmlFor="requirement" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kualifikasi Teknis</label>
+                        <textarea
+                            id="requirement"
+                            value={data.requirement}
+                            onChange={(e) => setData('requirement', e.target.value)}
+                            rows={4}
+                            className="w-full rounded-md border-gray-300 shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
+                            placeholder="Jelaskan hard skills yang dibutuhkan..."
+                        />
+                        {errors.requirement && <p className="text-sm text-red-500 mt-1">{errors.requirement}</p>}
+                    </div>
+                    <div className="flex justify-end">
+                        <button
+                            type="submit"
+                            disabled={processing}
+                            className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700 disabled:bg-gray-400 dark:bg-gray-200 dark:text-black dark:hover:bg-gray-300"
+                        >
+                            {processing ? 'Menyimpan...' : 'Simpan Profil'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+
+// Komponen StatusBadge (tetap sama)
 const StatusBadge = ({ status }: { status: string }) => {
     let icon;
-    let textClass = '';
     let text = status.charAt(0).toUpperCase() + status.slice(1);
 
     switch (status) {
@@ -35,124 +156,135 @@ const StatusBadge = ({ status }: { status: string }) => {
     return (
         <Badge variant="outline" className="flex w-fit items-center gap-1.5 px-2 py-1 text-sm">
             {icon}
-            <span className={textClass}>{text}</span>
+            <span>{text}</span>
         </Badge>
     );
 };
+
+// Komponen StatCard (tetap sama)
+function StatCard({ title, value }: { title: string; value: string | number }) {
+    return (
+        <div className="rounded-xl border bg-white p-6 shadow-md dark:border-neutral-700 dark:bg-neutral-900">
+            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-800 dark:text-white">{value}</p>
+        </div>
+    );
+}
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: route('dashboard') },
 ];
 
-interface Resume {
-    id: number;
-    original_filename: string;
-    created_at: string;
-    status: string;
-}
-
-interface PageProps {
-    resumes: Resume[];
-    stats: {
-        total: number;
-        newThisMonth: number;
-        averageScore: number;
-    };
-    flash?: {
-        success?: string;
-        info?: string;
-    };
-}
-
 export default function Dashboard() {
-    const { resumes, stats, flash } = usePage<PageProps>().props;
+    const { recentAnalyses, stats, roles, flash, errors } = usePage<PageProps>().props;
 
-    const [selectedRole, setSelectedRole] = useState('Backend Developer');
+    const [selectedRoleId, setSelectedRoleId] = useState<number | ''>(roles[0]?.id || '');
+    // State baru untuk mengontrol visibilitas modal
+    const [isCreateRoleModalOpen, setCreateRoleModalOpen] = useState(false);
 
-    const roleDropdown = (
-        <select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm dark:border-neutral-700 dark:bg-neutral-800 dark:text-white"
-        >
-            <option>Backend Developer</option>
-            <option>Frontend Developer</option>
-            <option>DevOps</option>
-            <option>Project Owner</option>
-        </select>
-    );
-
-    const {
-        data,
-        setData,
-        post: postResume,
-        processing: processingResume,
-        errors,
-        reset,
-    } = useForm<{
-        resume_files: File[];
-    }>({
-        resume_files: [],
+    const { data, setData, post: postResume, processing } = useForm({
+        resume_files: [] as File[],
+        role_id: roles[0]?.id || '',
     });
+
+    useEffect(() => {
+        setData('role_id', selectedRoleId);
+    }, [selectedRoleId]);
 
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
         if (flash?.info) toast.info(flash.info);
+        if (flash?.error) toast.error(flash.error);
     }, [flash]);
 
     const handleUpload = (e: FormEvent) => {
         e.preventDefault();
         if (data.resume_files.length === 0) {
-            toast.error('Mohon pilih file terlebih dahulu.');
+            toast.error('Mohon pilih file CV terlebih dahulu.');
+            return;
+        }
+        if (!data.role_id) {
+            toast.error('Mohon buat atau pilih Profil Analisis terlebih dahulu.');
             return;
         }
 
         postResume(route('resumes.store'), {
             preserveScroll: true,
             onSuccess: () => {
-                reset('resume_files');
                 const input = document.getElementById('resume_file') as HTMLInputElement;
                 if (input) input.value = '';
             },
-            onError: (err) => {
-                const errorMessages = Object.values(err).join(' ');
-                toast.error(errorMessages || 'Terjadi kesalahan saat mengupload.');
+            onError: (formErrors) => {
+                const firstError = Object.values(formErrors)[0];
+                toast.error(firstError || 'Terjadi kesalahan saat mengupload.');
             },
         });
     };
 
     return (
-        <AppLayout breadcrumbs={breadcrumbs} headerRight={roleDropdown}>
-        <Head title="Dashboard" />
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Dashboard" />
             <div className="flex flex-col gap-6 p-6 md:gap-8">
                 {/* Stats */}
                 <div className="grid gap-6 md:grid-cols-3">
-                    <StatCard title="Total CV Dianalisis" value={stats.total} />
-                    <StatCard title="Kandidat Baru (30 Hari)" value={stats.newThisMonth} />
-                    <StatCard title="Rata-rata Skor Kecocokan" value={`${stats.averageScore.toFixed(2)}%`} />
+                    <StatCard title="Total Analisis" value={stats.total} />
+                    <StatCard title="Analisis Baru (30 Hari)" value={stats.newThisMonth} />
+                    <StatCard title="Rata-rata Skor Teknis" value={`${stats.averageScore.toFixed(2)}%`} />
                 </div>
 
                 {/* Upload + Aktivitas */}
                 <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
                     {/* Upload Form */}
                     <div className="rounded-xl border bg-white p-6 shadow-md dark:border-neutral-700 dark:bg-neutral-900">
-                        <h2 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Upload CV Baru</h2>
+                        <h2 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Mulai Analisis Cepat</h2>
                         <form onSubmit={handleUpload} className="space-y-4">
-                            <input
-                                type="file"
-                                id="resume_file"
-                                accept=".pdf"
-                                multiple
-                                onChange={(e) => setData('resume_files', Array.from(e.target.files ?? []))}
-                                className="block w-full text-sm text-gray-800 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-white dark:file:bg-blue-900/40 dark:file:text-blue-300 dark:hover:file:bg-blue-900/60"
-                            />
-                            {errors.resume_files && <p className="text-sm text-red-500">{errors.resume_files}</p>}
+                            <div>
+                                <label htmlFor="role_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1. Pilih Profil Analisis</label>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        id="role_id"
+                                        value={selectedRoleId}
+                                        onChange={(e) => setSelectedRoleId(Number(e.target.value))}
+                                        className="w-full rounded-md border-gray-300 shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
+                                        disabled={roles.length === 0}
+                                    >
+                                        {roles.length > 0 ? (
+                                            roles.map((role) => (
+                                                <option key={role.id} value={role.id}>{role.name}</option>
+                                            ))
+                                        ) : (
+                                            <option>Buat profil terlebih dahulu</option>
+                                        )}
+                                    </select>
+                                    {/* --- PERUBAHAN: Tombol Link menjadi button untuk membuka modal --- */}
+                                    <button
+                                        type="button"
+                                        onClick={() => setCreateRoleModalOpen(true)}
+                                        className="p-2 bg-gray-100 rounded-md hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700"
+                                    >
+                                        <IconPlus size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label htmlFor="resume_file" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">2. Upload CV</label>
+                                <input
+                                    type="file"
+                                    id="resume_file"
+                                    accept=".pdf"
+                                    multiple
+                                    onChange={(e) => setData('resume_files', Array.from(e.target.files ?? []))}
+                                    className="block w-full text-sm text-gray-800 file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:font-medium file:text-blue-700 hover:file:bg-blue-100 dark:text-white dark:file:bg-blue-900/40 dark:file:text-blue-300 dark:hover:file:bg-blue-900/60"
+                                />
+                                {errors.resume_files && <p className="text-sm text-red-500 mt-1">{errors.resume_files}</p>}
+                                {errors.role_id && <p className="text-sm text-red-500 mt-1">{errors.role_id}</p>}
+                            </div>
                             <button
                                 type="submit"
-                                disabled={processingResume || data.resume_files.length === 0}
-                                className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                disabled={processing || data.resume_files.length === 0 || !selectedRoleId}
+                                className="w-full rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed dark:bg-gray-200 dark:text-black dark:hover:bg-gray-300"
                             >
-                                {processingResume ? 'Mengupload...' : 'Upload & Analisis'}
+                                {processing ? 'Memproses...' : 'Upload & Mulai Analisis'}
                             </button>
                         </form>
                     </div>
@@ -170,30 +302,27 @@ export default function Dashboard() {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {resumes.map((resume) => (
-                                    <tr key={resume.id} className="border-b dark:border-neutral-800">
+                                {recentAnalyses.map((analysis) => (
+                                    <tr key={analysis.id} className="border-b dark:border-neutral-800">
                                         <td className="py-3 pr-4">
                                             <Link
-                                                href={route('resumes.show', resume.id)}
+                                                href={route('analyses.show', analysis.id)}
                                                 className="text-blue-600 hover:underline dark:text-blue-400"
                                             >
-                                                {resume.original_filename}
+                                                {analysis.resume.original_filename}
                                             </Link>
                                         </td>
                                         <td className="py-3 pr-4 whitespace-nowrap">
-                                            {new Date(resume.created_at).toLocaleDateString('id-ID', {
-                                                day: 'numeric',
-                                                month: 'long',
-                                                year: 'numeric',
+                                            {new Date(analysis.created_at).toLocaleDateString('id-ID', {
+                                                day: 'numeric', month: 'long', year: 'numeric',
                                             })}
                                         </td>
                                         <td className="py-3">
-                                            {/* --- PENGGUNAAN KOMPONEN STATUS --- */}
-                                            <StatusBadge status={resume.status} />
+                                            <StatusBadge status={analysis.status} />
                                         </td>
                                     </tr>
                                 ))}
-                                {resumes.length === 0 && (
+                                {recentAnalyses.length === 0 && (
                                     <tr>
                                         <td colSpan={3} className="py-4 text-center text-gray-500 dark:text-gray-400">
                                             Belum ada aktivitas.
@@ -206,15 +335,12 @@ export default function Dashboard() {
                     </div>
                 </div>
             </div>
-        </AppLayout>
-    );
-}
 
-function StatCard({ title, value }: { title: string; value: string | number }) {
-    return (
-        <div className="rounded-xl border bg-white p-6 shadow-md dark:border-neutral-700 dark:bg-neutral-900">
-            <p className="text-sm text-gray-500 dark:text-gray-400">{title}</p>
-            <p className="mt-1 text-2xl font-semibold text-gray-800 dark:text-white">{value}</p>
-        </div>
+            {/* --- Render komponen modal --- */}
+            <CreateRoleModal
+                isOpen={isCreateRoleModalOpen}
+                onClose={() => setCreateRoleModalOpen(false)}
+            />
+        </AppLayout>
     );
 }

@@ -14,8 +14,6 @@ class Resume extends Model
         'user_id',
         'original_filename',
         'storage_path',
-        'status',
-        'analysis_result',
     ];
 
     protected $casts = [
@@ -40,5 +38,10 @@ class Resume extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function analyses()
+    {
+        return $this->hasMany(Analysis::class);
     }
 }

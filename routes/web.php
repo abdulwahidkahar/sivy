@@ -1,6 +1,9 @@
 <?php
 
+use App\Http\Controllers\AnalysisController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ResumeController;
+use App\Http\Controllers\RoleController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -9,12 +12,19 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', [ResumeController::class, 'index'])->name('dashboard');
-    Route::post('/resumes', [ResumeController::class, 'store'])->name('resumes.store');
-    Route::post('/resumes/analyze-batch', [ResumeController::class, 'analyzeBatch'])->name('resumes.analyzeBatch');
-    Route::get('/resumes/{resume}', [ResumeController::class, 'show'])->name('resumes.show');
+    // Dashboard
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/candidates', [ResumeController::class, 'candidates'])->name('candidates.index');
+    // Mengelola Roles (Profil Analisis)
+    Route::resource('roles', RoleController::class)->except(['create', 'edit']);
+
+    // Mengelola Resumes (hanya untuk upload dari dashboard)
+    Route::post('/resumes', [ResumeController::class, 'store'])->name('resumes.store');
+
+    // Mengelola Analyses (Halaman Daftar Kandidat & Detail)
+    Route::get('/analyses', [AnalysisController::class, 'index'])->name('analyses.index');
+    Route::get('/analyses/{analysis}', [AnalysisController::class, 'show'])->name('analyses.show');
+    Route::post('/roles/{role}/start-analysis', [AnalysisController::class, 'start'])->name('analyses.start');
 });
 
 require __DIR__.'/settings.php';

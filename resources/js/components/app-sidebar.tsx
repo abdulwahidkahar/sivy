@@ -18,6 +18,11 @@ const mainNavItems: NavItem[] = [
         href: '/candidates',
         icon: UserRound,
     },
+    {
+        title: 'Roles',
+        href: '/roles',
+        icon: UserRound,
+    },
 ];
 
 const footerNavItems: NavItem[] = [
