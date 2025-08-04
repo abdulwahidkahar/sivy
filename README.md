@@ -46,11 +46,11 @@ Filter, cari, dan lihat peringkat semua kandidat.
 
 Dapatkan wawasan mendalam dari AI.
 
+![Gambar Dashboard Sivy]
 
+![Gambar Daftar Kandidat Sivy]
 
-
-
-
+![Gambar Detail Analisis Sivy]
 
 🛠️ Tumpukan Teknologi (Tech Stack)
 Sivy dibangun dengan tumpukan teknologi modern yang dirancang untuk skalabilitas dan kecepatan pengembangan.
@@ -111,11 +111,13 @@ npm install
 npm run dev
 
 4. Jalankan Queue Worker
+
 Untuk memproses analisis CV, Anda perlu menjalankan queue worker:
 
 php artisan queue:work
 
 5. Akses Aplikasi
+
 Buka browser Anda dan navigasikan ke URL yang disediakan oleh server pengembangan Laravel (biasanya http://127.0.0.1:8000).
 
 📄 Lisensi
