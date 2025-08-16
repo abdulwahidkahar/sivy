@@ -40,14 +40,14 @@ SIVY is a modern, AI-powered resume analysis system built with Laravel and React
 - **Language**: PHP 8.2+
 - **Database**: MySQL/PostgreSQL
 - **Queue System**: Redis/Database queues
-- **Authentication**: Laravel Sanctum
+- **Authentication**: Laravel Session-based Authentication
 - **PDF Processing**: Smalot PDF Parser
 - **AI Integration**: Google Gemini API
 
 ### Frontend
 - **Framework**: React 18.x
 - **Language**: TypeScript 5.x
-- **Routing**: Inertia.js 2.x
+- **SPA Framework**: Inertia.js 2.x (No separate API needed)
 - **Styling**: Tailwind CSS 4.x
 - **UI Components**: Radix UI
 - **Icons**: Tabler Icons
@@ -77,7 +77,7 @@ Before installing SIVY, ensure you have the following installed:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/sivy.git
+git clone https://github.com/abdulwahidkahar/sivy.git
 cd sivy
 ```
 
@@ -354,41 +354,71 @@ We welcome contributions to SIVY! Please follow these guidelines:
 - **Testing**: Write tests for new features
 - **Documentation**: Update documentation for significant changes
 
-## 📝 API Documentation
+## 🌐 Architecture Overview
+
+### Inertia.js Architecture
+
+SIVY uses Inertia.js to create a modern single-page application (SPA) experience without the complexity of separate API endpoints. This architecture provides:
+
+- **Seamless Navigation**: Client-side routing with server-side rendering benefits
+- **Type Safety**: Shared TypeScript interfaces between frontend and backend
+- **Simplified Development**: No need for separate API layer
+- **Better Performance**: Reduced network requests and faster page loads
 
 ### Authentication
 
-SIVY uses Laravel Sanctum for API authentication:
+Authentication is handled through Laravel's built-in session management:
 
-```bash
-# Login
-POST /login
-{
-    "email": "user@example.com",
-    "password": "password"
-}
+```typescript
+// Frontend login
+router.post('/login', {
+  email: 'user@example.com',
+  password: 'password'
+});
 
-# Logout
-POST /logout
+// Frontend logout
+router.post('/logout');
 ```
 
-### Core Endpoints
+### Data Flow
+
+Instead of API endpoints, data flows through Inertia responses:
+
+```php
+// Backend Controller
+return Inertia::render('Dashboard', [
+    'roles' => Role::with('analyses')->get(),
+    'stats' => $this->getStats()
+]);
+```
+
+```typescript
+// Frontend Component
+interface Props {
+  roles: Role[];
+  stats: Stats;
+}
+
+export default function Dashboard({ roles, stats }: Props) {
+  // Data automatically available as props
+}
+```
+
+### Core Routes
 
 ```bash
-# Roles
-GET    /api/roles           # List all roles
-POST   /api/roles           # Create new role
-GET    /api/roles/{id}      # Get specific role
-PUT    /api/roles/{id}      # Update role
-DELETE /api/roles/{id}      # Delete role
-
-# Analyses
-GET    /api/analyses        # List all analyses
-POST   /api/analyses        # Start new analysis
-GET    /api/analyses/{id}   # Get analysis details
-
-# Resumes
-POST   /api/resumes         # Upload resume
+# Web Routes (Inertia.js)
+GET    /dashboard           # Main dashboard
+GET    /roles              # List all roles
+POST   /roles              # Create new role
+GET    /roles/{id}         # Show role details
+PUT    /roles/{id}         # Update role
+DELETE /roles/{id}         # Delete role
+GET    /analyses           # List analyses
+GET    /analyses/{id}      # Show analysis details
+POST   /roles/{role}/start-analysis # Start analysis
+POST   /resumes            # Upload resumes
+GET    /candidates         # List candidates
 ```
 
 ## 🔒 Security
@@ -489,8 +519,8 @@ For support and questions:
 - **Documentation**: Check this README and inline code documentation
 - **Issues**: Open an issue on GitHub
 - **Discussions**: Use GitHub Discussions for questions
-- **Email**: contact@sivy-app.com
+- **Email**: abdulwahidkaharr@gmail.com
 
 ---
 
-**Built with ❤️ by the SIVY Team**
+**Built with ❤️ Abdul Wahid Kahar**

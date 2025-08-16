@@ -1,461 +1,242 @@
-# SIVY API Documentation
+# SIVY Application Architecture
 
-## Overview
+**Important Notice:** SIVY does not use traditional REST API endpoints. Instead, it uses **Inertia.js** architecture for seamless integration between Laravel backend and React frontend.
 
-SIVY provides a RESTful API for managing resume analysis, job roles, and candidate data. The API is built with Laravel and uses JSON for data exchange.
+## Architecture Overview
 
-## Base URL
+SIVY is built using the Inertia.js stack, which provides:
+- **Single Page Application (SPA)** experience without API complexity
+- **Server-side routing** with client-side navigation
+- **Shared data** between backend and frontend
+- **Form handling** with automatic CSRF protection
 
-```
-Production: https://your-domain.com/api
-Development: http://localhost:8000/api
-```
+### Technology Stack
+
+- **Backend:** Laravel 12 with Inertia.js adapter
+- **Frontend:** React 18 with TypeScript
+- **Routing:** Web routes only (no API routes)
+- **Authentication:** Laravel's built-in session-based auth
+- **Data Transfer:** Inertia.js responses (JSON-like but not REST API)
 
 ## Authentication
 
-SIVY uses Laravel Sanctum for API authentication. All API requests require authentication except for public endpoints.
+SIVY uses Laravel's built-in session-based authentication. All requests are handled through web routes with automatic CSRF protection.
 
 ### Authentication Flow
 
-1. **Login to get session cookie:**
-   ```http
-   POST /login
-   Content-Type: application/json
-   
-   {
-     "email": "user@example.com",
-     "password": "password"
-   }
-   ```
+1. **Login**: User submits credentials via login form (`POST /login`)
+2. **Session Creation**: Laravel creates authenticated session
+3. **Automatic Protection**: All subsequent requests are automatically authenticated
+4. **CSRF Protection**: Forms include CSRF tokens automatically
 
-2. **Include CSRF token in subsequent requests:**
-   ```http
-   X-CSRF-TOKEN: your-csrf-token
-   ```
+#### Login Process
 
-3. **Logout:**
-   ```http
-   POST /logout
-   ```
+```typescript
+// Frontend (React)
+import { router } from '@inertiajs/react';
 
-## Response Format
-
-All API responses follow a consistent JSON format:
-
-### Success Response
-```json
-{
-  "success": true,
-  "data": {
-    // Response data
-  },
-  "message": "Operation completed successfully"
-}
-```
-
-### Error Response
-```json
-{
-  "success": false,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human readable error message",
-    "details": {
-      // Additional error details
-    }
-  }
-}
-```
-
-### Validation Error Response
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "The given data was invalid.",
-    "details": {
-      "field_name": [
-        "Validation error message"
-      ]
-    }
-  }
-}
-```
-
-## HTTP Status Codes
-
-| Code | Description |
-|------|-------------|
-| 200  | OK - Request successful |
-| 201  | Created - Resource created successfully |
-| 204  | No Content - Request successful, no content returned |
-| 400  | Bad Request - Invalid request data |
-| 401  | Unauthorized - Authentication required |
-| 403  | Forbidden - Access denied |
-| 404  | Not Found - Resource not found |
-| 422  | Unprocessable Entity - Validation failed |
-| 429  | Too Many Requests - Rate limit exceeded |
-| 500  | Internal Server Error - Server error |
-
-## Endpoints
-
-### Roles
-
-#### List All Roles
-```http
-GET /roles
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "name": "Senior Frontend Developer",
-      "slug": "senior-frontend-developer",
-      "requirement": "5+ years React experience...",
-      "culture": "Collaborative team player...",
-      "analyses_count": 15,
-      "created_at": "2024-01-15T10:30:00Z",
-      "updated_at": "2024-01-15T10:30:00Z"
-    }
-  ]
-}
-```
-
-#### Create Role
-```http
-POST /roles
-Content-Type: application/json
-
-{
-  "name": "Senior Backend Developer",
-  "requirement": "5+ years PHP/Laravel experience, strong database skills",
-  "culture": "Team player with strong communication skills"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 2,
-    "name": "Senior Backend Developer",
-    "slug": "senior-backend-developer",
-    "requirement": "5+ years PHP/Laravel experience...",
-    "culture": "Team player with strong communication skills",
-    "created_at": "2024-01-15T11:00:00Z",
-    "updated_at": "2024-01-15T11:00:00Z"
-  },
-  "message": "Role created successfully"
-}
-```
-
-#### Get Role
-```http
-GET /roles/{id}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "name": "Senior Frontend Developer",
-    "slug": "senior-frontend-developer",
-    "requirement": "5+ years React experience...",
-    "culture": "Collaborative team player...",
-    "analyses": [
-      {
-        "id": 1,
-        "status": "completed",
-        "technical_score": 85,
-        "culture_score": 78,
-        "resume": {
-          "id": 1,
-          "original_filename": "john_doe_resume.pdf"
-        }
-      }
-    ],
-    "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-15T10:30:00Z"
-  }
-}
-```
-
-#### Update Role
-```http
-PUT /roles/{id}
-Content-Type: application/json
-
-{
-  "name": "Senior Frontend Developer (Updated)",
-  "requirement": "Updated requirements...",
-  "culture": "Updated culture criteria..."
-}
-```
-
-#### Delete Role
-```http
-DELETE /roles/{id}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Role deleted successfully"
-}
-```
-
-### Resumes
-
-#### Upload Resume
-```http
-POST /resumes
-Content-Type: multipart/form-data
-
-file: [PDF file]
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "original_filename": "john_doe_resume.pdf",
-    "storage_path": "resumes/2024/01/15/abc123.pdf",
-    "user_id": 1,
-    "created_at": "2024-01-15T12:00:00Z",
-    "updated_at": "2024-01-15T12:00:00Z"
-  },
-  "message": "Resume uploaded successfully"
-}
-```
-
-### Analyses
-
-#### List All Analyses
-```http
-GET /analyses
-```
-
-**Query Parameters:**
-- `role_id` (optional): Filter by role ID
-- `status` (optional): Filter by status (pending, processing, completed, failed)
-- `recruitment_status` (optional): Filter by recruitment status
-- `page` (optional): Page number for pagination
-- `per_page` (optional): Items per page (default: 15)
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "data": [
-      {
-        "id": 1,
-        "status": "completed",
-        "recruitment_status": "new",
-        "technical_score": 85,
-        "culture_score": 78,
-        "summary": "Strong technical background with good cultural fit...",
-        "resume": {
-          "id": 1,
-          "original_filename": "john_doe_resume.pdf",
-          "user": {
-            "id": 1,
-            "name": "John Doe",
-            "email": "john@example.com"
-          }
-        },
-        "role": {
-          "id": 1,
-          "name": "Senior Frontend Developer"
-        },
-        "skills": [
-          {
-            "id": 1,
-            "name": "React"
-          },
-          {
-            "id": 2,
-            "name": "TypeScript"
-          }
-        ],
-        "created_at": "2024-01-15T12:30:00Z",
-        "updated_at": "2024-01-15T13:00:00Z"
-      }
-    ],
-    "current_page": 1,
-    "last_page": 3,
-    "per_page": 15,
-    "total": 42
-  }
-}
-```
-
-#### Get Analysis
-```http
-GET /analyses/{id}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "status": "completed",
-    "recruitment_status": "new",
-    "technical_score": 85,
-    "culture_score": 78,
-    "summary": "Strong technical background with excellent React skills...",
-    "justification": {
-      "technical": {
-        "strengths": [
-          "5+ years React experience",
-          "Strong TypeScript skills",
-          "Experience with modern tooling"
-        ],
-        "weaknesses": [
-          "Limited backend experience",
-          "No mobile development experience"
-        ]
-      },
-      "cultural": {
-        "strengths": [
-          "Team collaboration experience",
-          "Open source contributions"
-        ],
-        "concerns": [
-          "Limited leadership experience"
-        ]
-      }
+const handleLogin = (data) => {
+  router.post('/login', data, {
+    onSuccess: () => {
+      // Automatically redirected to dashboard
     },
-    "resume": {
-      "id": 1,
-      "original_filename": "john_doe_resume.pdf",
-      "user": {
-        "id": 1,
-        "name": "John Doe",
-        "email": "john@example.com"
-      }
-    },
-    "role": {
-      "id": 1,
-      "name": "Senior Frontend Developer",
-      "requirement": "5+ years React experience...",
-      "culture": "Collaborative team player..."
-    },
-    "skills": [
-      {
-        "id": 1,
-        "name": "React"
-      },
-      {
-        "id": 2,
-        "name": "TypeScript"
-      }
-    ],
-    "created_at": "2024-01-15T12:30:00Z",
-    "updated_at": "2024-01-15T13:00:00Z"
-  }
+    onError: (errors) => {
+      // Handle validation errors
+    }
+  });
+};
+```
+
+#### Session Management
+
+- **No API tokens needed** - Sessions handled automatically
+- **CSRF protection** - Built into all forms
+- **Automatic redirects** - Handled by Inertia.js
+- **Middleware protection** - Routes protected by `auth` middleware
+
+## Data Transfer Format
+
+Inertia.js handles data transfer between backend and frontend automatically. Instead of JSON API responses, data is passed through Inertia responses.
+
+### Page Responses
+```typescript
+// Backend (Laravel Controller)
+return Inertia::render('Dashboard', [
+    'roles' => $roles,
+    'analyses' => $analyses,
+    'stats' => $stats
+]);
+```
+
+```typescript
+// Frontend (React Component)
+interface Props {
+  roles: Role[];
+  analyses: Analysis[];
+  stats: Stats;
+}
+
+export default function Dashboard({ roles, analyses, stats }: Props) {
+  // Data is automatically available as props
 }
 ```
 
-#### Start Analysis
-```http
-POST /roles/{role_id}/start-analysis
-Content-Type: application/json
-
-{
-  "resume_ids": [1, 2, 3]
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "analyses_created": 3,
-    "analyses": [
-      {
-        "id": 1,
-        "status": "pending",
-        "resume_id": 1,
-        "role_id": 1
-      },
-      {
-        "id": 2,
-        "status": "pending",
-        "resume_id": 2,
-        "role_id": 1
-      },
-      {
-        "id": 3,
-        "status": "pending",
-        "resume_id": 3,
-        "role_id": 1
-      }
-    ]
+### Form Submissions
+```typescript
+// Frontend form submission
+router.post('/resumes', formData, {
+  onSuccess: (page) => {
+    // Success - page data updated automatically
   },
-  "message": "Analysis started for 3 resumes"
+  onError: (errors) => {
+    // Validation errors available in errors object
+  }
+});
+```
+
+### Error Handling
+- **Validation errors** - Automatically passed to frontend
+- **Flash messages** - Available via `usePage().props.flash`
+- **Redirects** - Handled automatically by Inertia.js
+
+## Web Routes
+
+SIVY uses web routes instead of API endpoints. All routes are protected by authentication middleware and return Inertia.js responses.
+
+### Available Routes
+
+#### Dashboard
+```http
+GET /dashboard
+```
+**Purpose:** Main dashboard with statistics and recent analyses  
+**Returns:** Inertia page with roles, analyses, and stats data
+
+#### Role Management
+```http
+GET /roles              # List all roles
+POST /roles             # Create new role
+GET /roles/{id}         # Show role details
+PUT /roles/{id}         # Update role
+DELETE /roles/{id}      # Delete role
+```
+**Purpose:** Manage job roles and their requirements  
+**Returns:** Inertia pages with role data and forms
+
+#### Resume Management
+```http
+POST /resumes           # Upload resume files
+```
+**Purpose:** Upload PDF resumes for analysis  
+**Returns:** Redirect with success/error messages
+
+#### Analysis Management
+```http
+GET /analyses                    # List all analyses
+GET /analyses/{id}               # Show analysis details
+POST /roles/{role}/start-analysis # Start new analysis
+```
+**Purpose:** View and manage resume analyses  
+**Returns:** Inertia pages with analysis data
+
+#### Candidate Management
+```http
+GET /candidates         # List candidates for roles
+```
+**Purpose:** View candidates and their analysis results  
+**Returns:** Inertia page with candidate data
+
+## Form Data Examples
+
+### Creating a Role
+```typescript
+// Frontend form submission
+const formData = {
+  name: "Senior Frontend Developer",
+  requirement: "5+ years React experience, TypeScript proficiency...",
+  culture: "Collaborative team player, mentoring junior developers..."
+};
+
+router.post('/roles', formData);
+```
+
+### Uploading Resumes
+```typescript
+// Frontend file upload
+const formData = new FormData();
+formData.append('resumes[]', file1);
+formData.append('resumes[]', file2);
+
+router.post('/resumes', formData, {
+  forceFormData: true,
+  onSuccess: () => {
+    // Handle success
+  },
+  onError: (errors) => {
+    // Handle validation errors
+  }
+});
+```
+
+### Starting Analysis
+```typescript
+// Frontend analysis start
+router.post(`/roles/${roleId}/start-analysis`, {}, {
+  onSuccess: (page) => {
+    // Redirected to analysis page
+  }
+});
+```
+
+## Data Models
+
+### Role Model
+```typescript
+interface Role {
+  id: number;
+  name: string;
+  slug: string;
+  requirement: string;
+  culture: string;
+  analyses_count: number;
+  created_at: string;
+  updated_at: string;
 }
 ```
 
-### Candidates
-
-#### List All Candidates
-```http
-GET /candidates
+### Analysis Model
+```typescript
+interface Analysis {
+  id: number;
+  status: 'processing' | 'completed' | 'failed';
+  role_id: number;
+  role: Role;
+  candidates_count: number;
+  created_at: string;
+  completed_at?: string;
+}
 ```
 
-**Query Parameters:**
-- `role_id` (optional): Filter by role ID
-- `min_technical_score` (optional): Minimum technical score
-- `min_culture_score` (optional): Minimum culture score
-- `recruitment_status` (optional): Filter by recruitment status
-- `search` (optional): Search by candidate name or email
-- `page` (optional): Page number for pagination
-- `per_page` (optional): Items per page (default: 15)
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "data": [
-      {
-        "id": 1,
-        "name": "John Doe",
-        "email": "john@example.com",
-        "analyses": [
-          {
-            "id": 1,
-            "technical_score": 85,
-            "culture_score": 78,
-            "recruitment_status": "new",
-            "role": {
-              "id": 1,
-              "name": "Senior Frontend Developer"
-            }
-          }
-        ]
-      }
-    ],
-    "current_page": 1,
-    "last_page": 2,
-    "per_page": 15,
-    "total": 25
-  }
+### Candidate Model
+```typescript
+interface Candidate {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  resume_filename: string;
+  scores: {
+    technical_fit: number;
+    cultural_fit: number;
+    overall_score: number;
+  };
+  analysis: {
+    strengths: string[];
+    weaknesses: string[];
+    recommendations: string;
+  };
+  role: Role;
+  created_at: string;
 }
 ```
 

@@ -264,7 +264,7 @@ docker-compose exec app npm run dev
 sivy/
 ├── app/
 │   ├── Http/
-│   │   ├── Controllers/          # API and web controllers
+│   │   ├── Controllers/          # Web controllers (Inertia.js)
 │   │   ├── Middleware/           # Custom middleware
 │   │   └── Requests/             # Form request validation
 │   ├── Jobs/                     # Background jobs
@@ -280,11 +280,13 @@ sivy/
 │   │   ├── components/           # Reusable React components
 │   │   ├── hooks/                # Custom React hooks
 │   │   ├── layouts/              # Page layouts
-│   │   ├── pages/                # Page components
-│   │   ├── services/             # API services
+│   │   ├── pages/                # Page components (Inertia.js)
+│   │   ├── services/             # Utility services (non-API)
 │   │   └── types/                # TypeScript type definitions
-│   └── views/                    # Blade templates
-├── routes/                       # Route definitions
+│   └── views/                    # Blade templates (app.blade.php)
+├── routes/
+│   ├── web.php                   # Web routes (Inertia.js)
+│   └── api.php                   # API routes (unused)
 ├── tests/                        # Test files
 └── docs/                         # Documentation
 ```
@@ -437,56 +439,65 @@ export const useAppState = () => {
 };
 ```
 
-### API Service Layer
+### Inertia.js Service Layer
+
+SIVY uses Inertia.js for seamless communication between frontend and backend, eliminating the need for traditional API services.
 
 ```typescript
-// services/api.ts
-class ApiService {
-  private baseUrl = '/api';
-  
-  async get<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      headers: {
-        'Accept': 'application/json',
-        'X-CSRF-TOKEN': this.getCsrfToken(),
-      },
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
-    }
-    
-    return response.json();
+// Using Inertia router for navigation and form submissions
+import { router } from '@inertiajs/react';
+
+// Navigation
+router.visit('/roles');
+router.get('/roles/1');
+
+// Form submissions
+router.post('/roles', formData, {
+  onSuccess: (page) => {
+    // Handle success
+  },
+  onError: (errors) => {
+    // Handle validation errors
   }
-  
-  async post<T>(endpoint: string, data: any): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-CSRF-TOKEN': this.getCsrfToken(),
-      },
-      body: JSON.stringify(data),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
-    }
-    
-    return response.json();
+});
+
+// File uploads
+router.post('/resumes', formData, {
+  forceFormData: true,
+  onProgress: (progress) => {
+    // Handle upload progress
   }
-  
-  private getCsrfToken(): string {
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    if (!token) {
-      throw new Error('CSRF token not found');
-    }
-    return token;
-  }
+});
+```
+
+### Data Fetching Pattern
+
+```typescript
+// Backend Controller
+return Inertia::render('Roles/Index', [
+    'roles' => Role::with('analyses')->paginate(15),
+    'filters' => $request->only(['search', 'status'])
+]);
+
+// Frontend Component
+interface Props {
+  roles: PaginatedData<Role>;
+  filters: {
+    search?: string;
+    status?: string;
+  };
 }
 
-export const api = new ApiService();
+export default function RolesIndex({ roles, filters }: Props) {
+  // Data is automatically available as props
+  return (
+    <div>
+      {roles.data.map(role => (
+        <RoleCard key={role.id} role={role} />
+      ))}
+    </div>
+  );
+}
 ```
 
 ## Backend Architecture

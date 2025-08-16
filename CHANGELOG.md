@@ -14,9 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Professional English documentation
 
 ### Changed
+- **BREAKING**: Removed unused API routes from `routes/api.php`
+- **BREAKING**: Updated frontend to use web routes instead of API endpoints
 - Improved code quality with strict types and PHPDoc comments
 - Enhanced middleware with proper type hints
 - Better error handling in controllers and jobs
+- Updated documentation to reflect Inertia.js architecture (no separate API needed)
+- Simplified authentication to use Laravel sessions instead of API tokens
+
+### Removed
+- Unused API endpoints and controllers
+- API service layer in frontend (replaced with Inertia.js router)
+- Laravel Sanctum dependency (not needed for Inertia.js architecture)
 
 ### Security
 - Added strict type checking for improved type safety
