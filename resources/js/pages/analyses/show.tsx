@@ -46,7 +46,7 @@ function ScoreCard({ title, score }: { title: string; score: number | null }) {
 export default function AnalysisShowPage({ analysis }: PageProps) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: route('dashboard') },
-        { title: 'Kandidat', href: route('analyses.index') },
+        { title: 'Kandidat', href: route('candidates.index') },
         { title: 'Detail Analisis', href: '#' },
     ];
 
@@ -58,7 +58,7 @@ export default function AnalysisShowPage({ analysis }: PageProps) {
                 <div className="max-w-4xl mx-auto">
                     <div className="mb-6">
                         <Link
-                            href={route('analyses.index')}
+                            href={route('candidates.index')}
                             className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                         >
                             <IconChevronLeft size={16} />

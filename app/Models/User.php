@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -17,7 +18,7 @@ class User extends Authenticatable
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
@@ -28,7 +29,7 @@ class User extends Authenticatable
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -48,13 +49,27 @@ class User extends Authenticatable
         ];
     }
 
+    /**
+     * Get the resumes for the user.
+     */
     public function resumes(): HasMany
     {
         return $this->hasMany(Resume::class);
     }
 
+    /**
+     * Get the roles for the user.
+     */
     public function roles(): HasMany
     {
         return $this->hasMany(Role::class);
+    }
+
+    /**
+     * Get the analyses for the user through resumes.
+     */
+    public function analyses(): HasMany
+    {
+        return $this->hasManyThrough(Analysis::class, Resume::class);
     }
 }

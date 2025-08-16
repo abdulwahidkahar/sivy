@@ -1,12 +1,12 @@
-import { Head, usePage, useForm, Link } from '@inertiajs/react';
+import { Head, usePage, useForm, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem, type PageProps as InertiaPageProps } from '@/types';
 import { toast } from 'sonner';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState, useRef } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { IconCircleCheckFilled, IconLoader, IconCircleXFilled, IconClock, IconPlus, IconX } from '@tabler/icons-react';
 
-// --- INTERFACE BARU SESUAI DATA DARI BACKEND ---
+// --- INTERFACE (TETAP SAMA) ---
 interface Role {
     id: number;
     name: string;
@@ -30,6 +30,9 @@ interface PageProps extends InertiaPageProps {
         averageScore: number;
     };
     roles: Role[];
+    filters: {
+        role_id: number | null;
+    };
     flash?: {
         success?: string;
         info?: string;
@@ -37,7 +40,7 @@ interface PageProps extends InertiaPageProps {
     };
 }
 
-// --- KOMPONEN BARU: MODAL UNTUK MEMBUAT PROFIL ---
+// --- KOMPONEN CreateRoleModal & StatusBadge & StatCard (TETAP SAMA) ---
 function CreateRoleModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
@@ -60,7 +63,6 @@ function CreateRoleModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         });
     };
 
-    // Efek untuk mereset form setiap kali modal dibuka
     useEffect(() => {
         if (isOpen) {
             reset();
@@ -78,7 +80,7 @@ function CreateRoleModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         >
             <div
                 className="w-full max-w-lg rounded-xl border bg-white p-6 shadow-lg dark:border-neutral-700 dark:bg-neutral-900 animate-in fade-in-0 zoom-in-95"
-                onClick={(e) => e.stopPropagation()} // Mencegah modal tertutup saat diklik di dalam
+                onClick={(e) => e.stopPropagation()}
             >
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Buat Profil Analisis Baru</h2>
@@ -126,8 +128,6 @@ function CreateRoleModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
     );
 }
 
-
-// Komponen StatusBadge (tetap sama)
 const StatusBadge = ({ status }: { status: string }) => {
     let icon;
     let text = status.charAt(0).toUpperCase() + status.slice(1);
@@ -161,7 +161,6 @@ const StatusBadge = ({ status }: { status: string }) => {
     );
 };
 
-// Komponen StatCard (tetap sama)
 function StatCard({ title, value }: { title: string; value: string | number }) {
     return (
         <div className="rounded-xl border bg-white p-6 shadow-md dark:border-neutral-700 dark:bg-neutral-900">
@@ -171,21 +170,37 @@ function StatCard({ title, value }: { title: string; value: string | number }) {
     );
 }
 
+
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: route('dashboard') },
 ];
 
 export default function Dashboard() {
-    const { recentAnalyses, stats, roles, flash, errors } = usePage<PageProps>().props;
+    const { recentAnalyses, stats, roles, filters, flash, errors } = usePage<PageProps>().props;
 
-    const [selectedRoleId, setSelectedRoleId] = useState<number | ''>(roles[0]?.id || '');
-    // State baru untuk mengontrol visibilitas modal
+    const [selectedRoleId, setSelectedRoleId] = useState<number | ''>(filters.role_id || '');
     const [isCreateRoleModalOpen, setCreateRoleModalOpen] = useState(false);
-
     const { data, setData, post: postResume, processing } = useForm({
         resume_files: [] as File[],
-        role_id: roles[0]?.id || '',
+        role_id: filters.role_id || '',
     });
+
+    const isFirstRun = useRef(true);
+
+    useEffect(() => {
+        if (isFirstRun.current) {
+            isFirstRun.current = false;
+            return;
+        }
+
+        if (selectedRoleId) {
+            router.get(route('dashboard'), { role_id: selectedRoleId }, {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            });
+        }
+    }, [selectedRoleId]);
 
     useEffect(() => {
         setData('role_id', selectedRoleId);
@@ -207,7 +222,6 @@ export default function Dashboard() {
             toast.error('Mohon buat atau pilih Profil Analisis terlebih dahulu.');
             return;
         }
-
         postResume(route('resumes.store'), {
             preserveScroll: true,
             onSuccess: () => {
@@ -225,21 +239,18 @@ export default function Dashboard() {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Dashboard" />
             <div className="flex flex-col gap-6 p-6 md:gap-8">
-                {/* Stats */}
                 <div className="grid gap-6 md:grid-cols-3">
                     <StatCard title="Total Analisis" value={stats.total} />
                     <StatCard title="Analisis Baru (30 Hari)" value={stats.newThisMonth} />
                     <StatCard title="Rata-rata Skor Teknis" value={`${stats.averageScore.toFixed(2)}%`} />
                 </div>
 
-                {/* Upload + Aktivitas */}
                 <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
-                    {/* Upload Form */}
                     <div className="rounded-xl border bg-white p-6 shadow-md dark:border-neutral-700 dark:bg-neutral-900">
                         <h2 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Mulai Analisis Cepat</h2>
                         <form onSubmit={handleUpload} className="space-y-4">
                             <div>
-                                <label htmlFor="role_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1. Pilih Profil Analisis</label>
+                                <label htmlFor="role_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">1. Pilih Profil Analisis (Filter Aktif)</label>
                                 <div className="flex items-center gap-2">
                                     <select
                                         id="role_id"
@@ -248,6 +259,7 @@ export default function Dashboard() {
                                         className="w-full rounded-md border-gray-300 shadow-sm dark:border-neutral-700 dark:bg-neutral-800"
                                         disabled={roles.length === 0}
                                     >
+                                        {/* Opsi "Semua Profil" sudah dihapus dari sini */}
                                         {roles.length > 0 ? (
                                             roles.map((role) => (
                                                 <option key={role.id} value={role.id}>{role.name}</option>
@@ -256,7 +268,6 @@ export default function Dashboard() {
                                             <option>Buat profil terlebih dahulu</option>
                                         )}
                                     </select>
-                                    {/* --- PERUBAHAN: Tombol Link menjadi button untuk membuka modal --- */}
                                     <button
                                         type="button"
                                         onClick={() => setCreateRoleModalOpen(true)}
@@ -289,7 +300,6 @@ export default function Dashboard() {
                         </form>
                     </div>
 
-                    {/* Aktivitas Terbaru */}
                     <div className="rounded-xl border bg-white p-6 shadow-md dark:border-neutral-700 dark:bg-neutral-900">
                         <h2 className="mb-4 text-lg font-semibold text-gray-800 dark:text-white">Aktivitas Terbaru</h2>
                         <div className="overflow-x-auto rounded-lg">
@@ -325,7 +335,7 @@ export default function Dashboard() {
                                 {recentAnalyses.length === 0 && (
                                     <tr>
                                         <td colSpan={3} className="py-4 text-center text-gray-500 dark:text-gray-400">
-                                            Belum ada aktivitas.
+                                            Belum ada aktivitas untuk profil ini.
                                         </td>
                                     </tr>
                                 )}
@@ -336,7 +346,6 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            {/* --- Render komponen modal --- */}
             <CreateRoleModal
                 isOpen={isCreateRoleModalOpen}
                 onClose={() => setCreateRoleModalOpen(false)}

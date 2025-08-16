@@ -1,30 +1,60 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\AnalyzeResumeJob;
 use App\Models\Analysis;
 use App\Models\Role;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // 1. Impor trait
+use App\Models\User;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Inertia\Response;
+use Throwable;
 
 class AnalysisController extends Controller
 {
-    use AuthorizesRequests; // 2. Gunakan trait di dalam class
+    use AuthorizesRequests;
 
-    public function index(Request $request)
+    /**
+     * Display a listing of analyses.
+     */
+    public function index(Request $request): Response
     {
-        $request->validate(['role_id' => 'nullable|exists:roles,id']);
+        $validated = $request->validate([
+            'role_id' => 'nullable|integer|exists:roles,id',
+            'status' => 'nullable|string|in:pending,processing,completed,failed',
+            'search' => 'nullable|string|max:255',
+        ]);
 
-        $query = Analysis::query()->whereHas('resume', function ($q) {
-            $q->where('user_id', Auth::id());
-        });
+        /** @var User $user */
+        $user = Auth::user();
 
-        if ($request->filled('role_id')) {
-            $query->where('role_id', $request->role_id);
+        $query = Analysis::query()
+            ->whereHas('resume', function ($q) use ($user): void {
+                $q->where('user_id', $user->id);
+            });
+
+        // Apply filters
+        if (!empty($validated['role_id'])) {
+            $query->where('role_id', $validated['role_id']);
+        }
+
+        if (!empty($validated['status'])) {
+            $query->where('status', $validated['status']);
+        }
+
+        if (!empty($validated['search'])) {
+            $query->whereHas('resume', function ($q) use ($validated): void {
+                $q->where('original_filename', 'like', '%' . $validated['search'] . '%');
+            });
         }
 
         $analyses = $query->with(['resume', 'role', 'skills'])
@@ -32,51 +62,87 @@ class AnalysisController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $roles = Auth::user()->roles()->get();
+        $roles = $user->roles()->get();
 
         return Inertia::render('Analyses/Index', [
             'analyses' => $analyses,
             'roles' => $roles,
-            'filters' => $request->only(['role_id']),
+            'filters' => $request->only(['role_id', 'status', 'search']),
         ]);
     }
 
-    public function start(Role $role)
+    /**
+     * Start analysis for all resumes with the given role.
+     */
+    public function start(Role $role): RedirectResponse
     {
-        // Baris ini sekarang akan berfungsi dengan benar
         $this->authorize('update', $role);
 
-        $resumes = Auth::user()->resumes;
-        $dispatchedCount = 0;
-
-        foreach ($resumes as $resume) {
-            $analysis = Analysis::firstOrCreate(
-                [
-                    'resume_id' => $resume->id,
-                    'role_id'   => $role->id,
-                ],
-                [
-                    'status' => 'pending',
-                ]
-            );
-
-            if ($analysis->status === 'pending') {
-                AnalyzeResumeJob::dispatch($analysis);
-                $dispatchedCount++;
-            }
+        /** @var User $user */
+        $user = Auth::user();
+        $resumes = $user->resumes;
+        
+        if ($resumes->isEmpty()) {
+            return redirect()->back()->with('error', 'Tidak ada CV yang tersedia untuk dianalisis.');
         }
 
-        $message = $dispatchedCount > 0
-            ? "Proses analisis dimulai untuk {$dispatchedCount} CV."
-            : "Semua CV sudah dianalisis untuk profil ini.";
+        try {
+            $dispatchedCount = DB::transaction(function () use ($resumes, $role): int {
+                $count = 0;
+                
+                foreach ($resumes as $resume) {
+                    // Check if analysis already exists
+                    $existingAnalysis = Analysis::where('resume_id', $resume->id)
+                        ->where('role_id', $role->id)
+                        ->first();
+                    
+                    if ($existingAnalysis) {
+                        continue; // Skip if analysis already exists
+                    }
 
-        return redirect()->back()->with('success', $message);
+                    $analysis = Analysis::create([
+                        'resume_id' => $resume->id,
+                        'role_id' => $role->id,
+                        'status' => Analysis::STATUS_PENDING,
+                    ]);
+
+                    AnalyzeResumeJob::dispatch($analysis);
+                    $count++;
+                }
+                
+                return $count;
+            });
+
+            if ($dispatchedCount === 0) {
+                return redirect()->back()->with('info', 'Semua CV sudah memiliki analisis untuk role ini.');
+            }
+
+            Log::info("Batch analysis started", [
+                'user_id' => $user->id,
+                'role_id' => $role->id,
+                'dispatched_count' => $dispatchedCount,
+            ]);
+
+            return redirect()->back()->with('success', "{$dispatchedCount} analisis berhasil dimulai.");
+
+        } catch (Throwable $e) {
+            Log::error('Batch analysis failed', [
+                'user_id' => $user->id,
+                'role_id' => $role->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Terjadi kesalahan saat memulai analisis.');
+        }
     }
 
-    public function show(Analysis $analysis)
+    /**
+     * Display the specified analysis.
+     */
+    public function show(Analysis $analysis): Response
     {
-//        // Baris ini sekarang akan berfungsi dengan benar
-//        $this->authorize('view', $analysis);
+        // Ensure the analysis belongs to the authenticated user
+        $this->authorize('view', $analysis);
 
         $analysis->load(['resume', 'role', 'skills']);
 

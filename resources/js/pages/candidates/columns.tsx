@@ -2,7 +2,6 @@
 
 import { type ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, MoreHorizontal } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -14,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Link } from "@inertiajs/react"
 
-// Definisikan tipe data kandidat
 export type Candidate = {
     id: number
     original_filename: string
@@ -26,7 +24,8 @@ export type Candidate = {
 
 export const columns: ColumnDef<Candidate>[] = [
     {
-        accessorKey: "analysis_result.nama_kandidat",
+        id: "nama",
+        accessorFn: (row) => row.analysis_result?.nama_kandidat ?? "Nama Tidak Ditemukan",
         header: "Nama Kandidat",
         cell: ({ row }) => {
             const name = row.original.analysis_result?.nama_kandidat || "Nama Tidak Ditemukan"
@@ -34,28 +33,36 @@ export const columns: ColumnDef<Candidate>[] = [
         },
     },
     {
-        accessorKey: "analysis_result.skor_kecocokan",
-        header: ({ column }) => {
+        id: "skor",
+        accessorFn: (row) => row.analysis_result?.skor_kecocokan ?? 0,
+        header: ({ column }) => (
+            <Button
+                variant="ghost"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            >
+                Skor
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
+        cell: ({ row }) => {
+            const score = row.original.analysis_result?.skor_kecocokan ?? 0
+            const scoreColor =
+                score >= 90 ? "text-green-500" : score >= 70 ? "text-yellow-500" : "text-red-500"
             return (
-                <Button
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Skor
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
+                <div className={`text-center font-bold text-lg ${scoreColor}`}>
+                    {score}%
+                </div>
             )
         },
-        cell: ({ row }) => {
-            const score = row.original.analysis_result?.skor_kecocokan || 0
-            // Tambahkan warna berdasarkan skor
-            const scoreColor = score >= 90 ? 'text-green-500' : score >= 70 ? 'text-yellow-500' : 'text-red-500';
-            return <div className={`text-center font-bold text-lg ${scoreColor}`}>{score}%</div>
-        },
+        filterFn: "filterGreaterThan",
+        enableColumnFilter: true,
     },
     {
         accessorKey: "original_filename",
         header: "Nama File",
+        cell: ({ row }) => (
+            <div className="truncate max-w-[240px]">{row.original.original_filename}</div>
+        ),
     },
     {
         id: "actions",
@@ -72,11 +79,15 @@ export const columns: ColumnDef<Candidate>[] = [
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Aksi</DropdownMenuLabel>
                         <DropdownMenuItem asChild>
-                            <Link href={route('resumes.show', candidate.id)}>Lihat Detail CV</Link>
+                            <Link href={route("analyses.show", { analysis: candidate.id })}>
+                                Lihat Detail
+                            </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                            onClick={() => navigator.clipboard.writeText(candidate.analysis_result?.nama_kandidat || '')}
+                            onClick={() =>
+                                navigator.clipboard.writeText(candidate.analysis_result?.nama_kandidat || "-")
+                            }
                         >
                             Salin Nama
                         </DropdownMenuItem>

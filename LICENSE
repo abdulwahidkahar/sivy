@@ -1,0 +1,80 @@
+MIT License
+
+Copyright (c) 2024 SIVY - AI-Powered Resume Analysis System
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Additional Terms and Conditions:
+
+1. AI Service Usage: This software integrates with Google Gemini API. Users are
+   responsible for complying with Google's terms of service and API usage policies.
+   The software authors are not responsible for any costs, limitations, or issues
+   arising from the use of third-party AI services.
+
+2. Data Privacy: Users of this software are responsible for ensuring compliance
+   with applicable data protection laws (GDPR, CCPA, etc.) when processing
+   personal information through resume analysis. The software provides tools
+   but does not guarantee compliance.
+
+3. Resume Content: Users must ensure they have proper authorization to upload
+   and analyze resume content. The software authors are not responsible for
+   any copyright, privacy, or legal issues arising from unauthorized use of
+   resume data.
+
+4. AI Analysis Accuracy: The AI-powered analysis results are provided for
+   informational purposes only. The software authors make no guarantees about
+   the accuracy, completeness, or reliability of AI-generated assessments.
+   Users should use their professional judgment when making hiring decisions.
+
+5. Security: While the software implements security best practices, users are
+   responsible for maintaining secure deployment environments, keeping
+   dependencies updated, and following security guidelines provided in the
+   documentation.
+
+6. Commercial Use: This software may be used for commercial purposes under
+   the MIT license terms. However, users are responsible for ensuring their
+   use case complies with all applicable laws and regulations in their
+   jurisdiction.
+
+7. Modifications: Users may modify the software according to the MIT license.
+   However, modified versions should be clearly identified to avoid confusion
+   with the original software.
+
+8. Support: The software is provided "as is" without guaranteed support.
+   Community support is available through GitHub issues and discussions.
+   Commercial support may be available separately.
+
+9. Liability Limitation: In no event shall the authors or copyright holders
+   be liable for any direct, indirect, incidental, special, exemplary, or
+   consequential damages (including, but not limited to, procurement of
+   substitute goods or services; loss of use, data, or profits; or business
+   interruption) however caused and on any theory of liability, whether in
+   contract, strict liability, or tort (including negligence or otherwise)
+   arising in any way out of the use of this software, even if advised of
+   the possibility of such damage.
+
+10. Third-Party Components: This software includes various open-source
+    components, each with their own licenses. Users must comply with all
+    applicable third-party licenses. See package.json and composer.json
+    for a complete list of dependencies.
+
+By using this software, you acknowledge that you have read, understood, and
+agree to be bound by these terms and conditions in addition to the MIT License.

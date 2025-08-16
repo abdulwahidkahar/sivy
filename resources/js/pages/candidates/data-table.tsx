@@ -26,11 +26,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 
-const filterGreaterThan: FilterFn<unknown> = (row, columnId, value) => {
-    const rowValue = row.getValue(columnId) as number;
-    const filterValue = value as number; // Konfirmasi bahwa 'value' adalah angka
-    return rowValue >= filterValue;
-};
+// Custom filter untuk nilai numerik
+const filterGreaterThan: FilterFn<any> = (row, columnId, value) => {
+    const rowValue = row.getValue(columnId) as number | undefined
+    if (typeof rowValue !== "number") return false
+    return rowValue >= value
+}
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
@@ -38,9 +39,9 @@ interface DataTableProps<TData, TValue> {
 }
 
 export function DataTable<TData, TValue>({
-                                             columns,
-                                             data,
-                                         }: DataTableProps<TData, TValue>) {
+    columns,
+    data,
+}: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
 
@@ -48,7 +49,7 @@ export function DataTable<TData, TValue>({
         data,
         columns,
         filterFns: {
-            filterGreaterThan: filterGreaterThan,
+            filterGreaterThan,
         },
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
@@ -62,17 +63,16 @@ export function DataTable<TData, TValue>({
         },
     })
 
-    const scoreColumn = table.getColumn("analysis_result.skor_kecocokan");
+    const nameColumn = table.getColumn("nama")
+    const scoreColumn = table.getColumn("skor")
 
     return (
         <div>
-            <div className="flex items-center justify-between py-4">
+            <div className="flex items-center justify-between flex-wrap gap-4 py-4">
                 <Input
-                    placeholder="Cari berdasarkan nama kandidat..."
-                    value={(table.getColumn("analysis_result.nama_kandidat")?.getFilterValue() as string) ?? ""}
-                    onChange={(event) =>
-                        table.getColumn("analysis_result.nama_kandidat")?.setFilterValue(event.target.value)
-                    }
+                    placeholder="Cari nama kandidat..."
+                    value={(nameColumn?.getFilterValue() as string) ?? ""}
+                    onChange={(e) => nameColumn?.setFilterValue(e.target.value)}
                     className="max-w-sm"
                 />
 
@@ -81,14 +81,14 @@ export function DataTable<TData, TValue>({
                         id="top-scores"
                         checked={!!scoreColumn?.getFilterValue()}
                         onCheckedChange={(value) => {
-                            scoreColumn?.setFilterValue(value ? 90 : undefined);
+                            scoreColumn?.setFilterValue(value ? 90 : undefined)
                         }}
                     />
                     <label
                         htmlFor="top-scores"
                         className="text-sm font-medium leading-none"
                     >
-                        Hanya tampilkan skor 90+
+                        Tampilkan hanya skor 90+
                     </label>
                 </div>
             </div>
@@ -112,12 +112,9 @@ export function DataTable<TData, TValue>({
                         ))}
                     </TableHeader>
                     <TableBody>
-                        {table.getRowModel().rows?.length ? (
+                        {table.getRowModel().rows.length ? (
                             table.getRowModel().rows.map((row) => (
-                                <TableRow
-                                    key={row.id}
-                                    data-state={row.getIsSelected() && "selected"}
-                                >
+                                <TableRow key={row.id}>
                                     {row.getVisibleCells().map((cell) => (
                                         <TableCell key={cell.id}>
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}

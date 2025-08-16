@@ -7,7 +7,8 @@ export default function HomePage() {
             <div className="min-h-screen bg-white text-gray-800 font-sans antialiased">
                 {/* Header */}
                 <header className="flex justify-between items-center px-6 py-5 border-b border-gray-200">
-                    <h1 className="text-xl font-bold text-gray-900">Sivy</h1>
+
+                    <h1 className="text-xl font-bold text-gray-900">SivyHire</h1>
                     <nav className="flex space-x-6 text-sm font-medium text-gray-600">
                         <Link href="/register" className="hover:text-gray-900 transition">Register</Link>
                         <Link href="/login" className="hover:text-gray-900 transition">Login</Link>

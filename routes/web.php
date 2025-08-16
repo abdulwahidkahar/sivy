@@ -4,6 +4,7 @@ use App\Http\Controllers\AnalysisController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ResumeController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\CandidateController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -25,8 +26,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/analyses', [AnalysisController::class, 'index'])->name('analyses.index');
     Route::get('/analyses/{analysis}', [AnalysisController::class, 'show'])->name('analyses.show');
     Route::post('/roles/{role}/start-analysis', [AnalysisController::class, 'start'])->name('analyses.start');
+
+    Route::get('/candidates', [CandidateController::class, 'index'])->name('candidates.index');
 });
 
 require __DIR__.'/settings.php';
 require __DIR__.'/auth.php';
-
