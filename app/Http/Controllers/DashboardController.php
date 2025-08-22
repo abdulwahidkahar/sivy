@@ -48,6 +48,29 @@ class DashboardController extends Controller
         $recentAnalyses = (clone $allAnalysesQuery)->with('resume')->latest()->take(10)->get();
         $completedAnalyses = (clone $allAnalysesQuery)->where('status', 'completed');
 
+        // --- Ambil Kandidat Terbaik ---
+        $topCandidates = (clone $completedAnalyses)
+            ->with(['resume', 'role'])
+            ->selectRaw('*, (technical_score + culture_score) as total_score')
+            ->orderByDesc('total_score')
+            ->orderByDesc('technical_score')
+            ->orderByDesc('culture_score')
+            ->take(3) // Ubah dari 5 menjadi 3
+            ->get()
+            ->map(function ($analysis) {
+                return [
+                    'id' => $analysis->id,
+                    'candidate_name' => $analysis->getCandidateName(),
+                    'role_name' => $analysis->role->name ?? 'Unknown Role',
+                    'technical_score' => $analysis->technical_score,
+                    'culture_score' => $analysis->culture_score,
+                    'total_score' => $analysis->technical_score + $analysis->culture_score,
+                    'status' => $analysis->recruitment_status,
+                    'analyzed_at' => $analysis->created_at->format('d M Y'),
+                    'resume_file' => $analysis->resume->file_path ?? null,
+                ];
+            });
+
         // --- Hitung Statistik ---
         $stats = [
             'total' => (clone $allAnalysesQuery)->count(),
@@ -57,6 +80,7 @@ class DashboardController extends Controller
 
         return Inertia::render('dashboard', [
             'recentAnalyses' => $recentAnalyses,
+            'topCandidates' => $topCandidates,
             'stats' => $stats,
             'roles' => $roles,
             'filters' => ['role_id' => $filterRoleId ? (int)$filterRoleId : null],

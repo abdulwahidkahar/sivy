@@ -169,10 +169,17 @@ class AnalyzeResumeJob implements ShouldQueue
                 throw new Exception('Empty response from Gemini API.');
             }
 
-            // Handle both string and array responses
             if (is_string($result)) {
-                $decoded = json_decode($result, true);
+                $cleanedResult = $this->extractJsonFromResponse($result);
+                
+                $decoded = json_decode($cleanedResult, true);
                 if (json_last_error() !== JSON_ERROR_NONE) {
+                    // Log the actual response for debugging
+                    Log::error('Invalid JSON from Gemini API', [
+                        'raw_response' => $result,
+                        'json_error' => json_last_error_msg(),
+                        'analysis_id' => $this->analysis->id
+                    ]);
                     throw new Exception('Invalid JSON response from Gemini API: ' . json_last_error_msg());
                 }
                 $result = $decoded;
@@ -192,20 +199,56 @@ class AnalyzeResumeJob implements ShouldQueue
     /**
      * Build the analysis prompt for AI.
      */
-    private function buildAnalysisPrompt(string $roleName, string $requirement, string $culture, string $text): string
+    private function buildAnalysisPrompt(string $roleName, string $requirement, ?string $culture, string $text): string
     {
-        return "Anda adalah seorang asisten rekrutmen AI yang sangat teliti. Berdasarkan teks CV berikut, analisis kecocokannya untuk posisi '{$roleName}'.
+        $cultureText = $culture ?? 'Tidak ada kriteria budaya khusus yang ditetapkan';
+        
+        return "Anda adalah seorang asisten rekrutmen AI yang sangat teliti dan objektif. Berdasarkan teks CV berikut, analisis kecocokannya untuk posisi '{$roleName}'.
         Kualifikasi teknis yang dicari adalah: '{$requirement}'.
-        Kualifikasi budaya yang dicari adalah: '{$culture}'.
-
-        Berikan jawaban HANYA dalam format JSON yang valid dan **gunakan Bahasa Indonesia** untuk semua nilai string di dalam JSON. JSON harus berisi kunci berikut:
-        - 'nama_kandidat' (string, nama lengkap kandidat dari CV)
-        - 'technical_score' (integer 0-100, berdasarkan kualifikasi teknis)
-        - 'culture_score' (integer 0-100, berdasarkan kualifikasi budaya)
-        - 'summary' (string, 2-3 kalimat ringkasan profesional kandidat dalam Bahasa Indonesia)
-        - 'skills' (array of strings, daftar keahlian yang relevan)
-        - 'justification' (object dengan kunci 'positive_points' dan 'negative_points', keduanya adalah array of strings dalam Bahasa Indonesia)
-
+        Kualifikasi budaya yang dicari adalah: '{$cultureText}'.
+    
+        PANDUAN PENILAIAN YANG KETAT:
+        - Skor 90-100: Kandidat SANGAT LUAR BIASA, melebihi semua ekspektasi dengan pengalaman yang sangat relevan
+        - Skor 80-89: Kandidat SANGAT BAIK, memenuhi hampir semua kriteria dengan pengalaman yang relevan
+        - Skor 70-79: Kandidat BAIK, memenuhi sebagian besar kriteria dengan beberapa kekurangan minor
+        - Skor 60-69: Kandidat CUKUP, memenuhi kriteria dasar tapi ada beberapa gap yang signifikan
+        - Skor 50-59: Kandidat KURANG, hanya memenuhi sebagian kecil kriteria
+        - Skor 0-49: Kandidat TIDAK SESUAI, tidak memenuhi kriteria utama
+    
+        KRITERIA PENILAIAN TEKNIS:
+        - Apakah kandidat memiliki SEMUA teknologi/skill yang diminta?
+        - Berapa lama pengalaman dengan teknologi tersebut?
+        - Apakah ada bukti konkret penggunaan teknologi (proyek, pencapaian)?
+        - Seberapa mendalam pemahaman teknisnya berdasarkan deskripsi?
+    
+        KRITERIA PENILAIAN BUDAYA:
+        - Apakah nilai-nilai kandidat selaras dengan budaya yang diminta?
+        - Apakah ada bukti konkret dari pengalaman kerja yang menunjukkan kesesuaian budaya?
+        - Bagaimana gaya komunikasi dan kolaborasi kandidat?
+    
+        PENTING: 
+        - Berikan jawaban HANYA dalam format JSON yang valid
+        - Jangan tambahkan teks apapun sebelum atau sesudah JSON
+        - Jangan gunakan markdown code blocks atau backticks
+        - Pastikan semua string dalam double quotes
+        - Pastikan tidak ada trailing comma
+        - JANGAN gunakan null untuk score, gunakan angka 0-100
+        - BERI SKOR SECARA OBJEKTIF dan TIDAK MUDAH MEMBERIKAN SKOR TINGGI
+        - Gunakan bahasa Indonesia untuk summary dan justification
+    
+        Format JSON yang HARUS diikuti:
+        {
+            \"nama_kandidat\": \"Nama lengkap kandidat\",
+            \"technical_score\": 65,
+            \"culture_score\": 70,
+            \"summary\": \"Ringkasan objektif dalam bahasa Indonesia tentang kesesuaian kandidat\",
+            \"skills\": [\"skill1\", \"skill2\", \"skill3\"],
+            \"justification\": {
+                \"positive_points\": [\"Poin positif 1 dalam bahasa Indonesia\", \"Poin positif 2\"],
+                \"negative_points\": [\"Kekurangan 1 dalam bahasa Indonesia\", \"Kekurangan 2\"]
+            }
+        }
+    
         Teks CV: \n\n{$text}";
     }
 
@@ -227,12 +270,19 @@ class AnalyzeResumeJob implements ShouldQueue
             throw new Exception('Invalid technical_score: must be integer between 0-100.');
         }
 
-        if (!is_int($result['culture_score']) || $result['culture_score'] < 0 || $result['culture_score'] > 100) {
-             throw new Exception('Invalid culture_score: must be integer between 0-100.');
-         }
+        // Handle null culture_score by setting default value
+        if ($result['culture_score'] === null) {
+            $result['culture_score'] = 50; // Default score when no culture criteria
+            Log::info('Culture score was null, setting default value', [
+                'analysis_id' => $this->analysis->id ?? 'unknown',
+                'default_score' => 50
+            ]);
+        } elseif (!is_int($result['culture_score']) || $result['culture_score'] < 0 || $result['culture_score'] > 100) {
+            throw new Exception('Invalid culture_score: must be integer between 0-100.');
+        }
 
-         return $result;
-     }
+        return $result;
+    }
 
     /**
      * Sync skills with the analysis.
@@ -298,5 +348,44 @@ class AnalyzeResumeJob implements ShouldQueue
         }
         
         return $data;
+    }
+
+    private function extractJsonFromResponse(string $response): string
+    {
+        // Remove markdown code blocks if present
+        $response = preg_replace('/```json\s*/', '', $response);
+        $response = preg_replace('/```\s*$/', '', $response);
+        
+        // Remove common prefixes that AI might add, but be more careful
+        $response = trim($response);
+        
+        // If response already starts with {, don't modify it
+        if (strpos($response, '{') === 0) {
+            return $response;
+        }
+        
+        // Remove text before first {
+        $response = preg_replace('/^.*?(?=\{)/s', '', $response);
+        
+        // Find the first { and last }
+        $firstBrace = strpos($response, '{');
+        $lastBrace = strrpos($response, '}');
+        
+        if ($firstBrace === false || $lastBrace === false || $firstBrace >= $lastBrace) {
+            Log::error('No valid JSON structure found', [
+                'response' => substr($response, 0, 200),
+                'first_brace' => $firstBrace,
+                'last_brace' => $lastBrace
+            ]);
+            throw new Exception('No valid JSON structure found in AI response');
+        }
+        
+        $jsonString = substr($response, $firstBrace, $lastBrace - $firstBrace + 1);
+        
+        // Clean up common issues
+        $jsonString = preg_replace('/,\s*}/', '}', $jsonString); // Remove trailing commas
+        $jsonString = preg_replace('/,\s*]/', ']', $jsonString); // Remove trailing commas in arrays
+        
+        return $jsonString;
     }
 }

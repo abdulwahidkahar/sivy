@@ -10,7 +10,7 @@ use App\Models\Analysis;
 use App\Models\Resume;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +23,7 @@ class ResumeController extends Controller
     /**
      * Store uploaded resumes and dispatch analysis jobs.
      */
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): RedirectResponse
     {
         /** @var User $user */
         $user = Auth::user();
@@ -45,7 +45,7 @@ class ResumeController extends Controller
         ]);
 
         try {
-            return DB::transaction(function () use ($validated, $user): JsonResponse {
+            $result = DB::transaction(function () use ($validated, $user): array {
                 $role = Role::findOrFail($validated['role_id']);
                 $dispatchedCount = 0;
                 $createdAnalyses = [];
@@ -76,19 +76,23 @@ class ResumeController extends Controller
                     $createdAnalyses[] = $analysis->id;
                 }
 
-                Log::info("Resume analysis jobs dispatched", [
-                    'user_id' => $user->id,
-                    'role_id' => $role->id,
-                    'count' => $dispatchedCount,
-                    'analysis_ids' => $createdAnalyses,
-                ]);
-
-                return response()->json([
-                    'message' => "Berhasil mengunggah {$dispatchedCount} CV. Analisis sedang diproses.",
+                return [
                     'dispatched_count' => $dispatchedCount,
                     'analysis_ids' => $createdAnalyses,
-                ]);
+                ];
             });
+
+            Log::info("Resume analysis jobs dispatched", [
+                'user_id' => $user->id,
+                'role_id' => $validated['role_id'],
+                'count' => $result['dispatched_count'],
+                'analysis_ids' => $result['analysis_ids'],
+            ]);
+
+            return redirect()->back()->with('success', 
+                "Berhasil mengunggah {$result['dispatched_count']} CV. Analisis sedang diproses."
+            );
+
         } catch (Throwable $e) {
             Log::error('Resume upload failed', [
                 'user_id' => $user->id,
@@ -97,10 +101,9 @@ class ResumeController extends Controller
                 'line' => $e->getLine(),
             ]);
 
-            return response()->json([
-                'message' => 'Terjadi kesalahan saat mengunggah CV. Silakan coba lagi.',
-                'error' => config('app.debug') ? $e->getMessage() : null,
-            ], 500);
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Terjadi kesalahan saat mengunggah CV. Silakan coba lagi.');
         }
     }
 }

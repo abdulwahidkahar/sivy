@@ -28,9 +28,6 @@ export default function HomePage() {
                         <Link href="/upload" className="bg-gray-900 text-white px-6 py-3 rounded-md font-medium hover:bg-gray-700 transition">
                             Try It Free
                         </Link>
-                        <a href="mailto:sales@sivy.app" className="border border-gray-300 px-6 py-3 rounded-md font-medium text-gray-700 hover:bg-gray-100 transition">
-                            Talk to Sales
-                        </a>
                     </div>
                 </main>
 
@@ -59,7 +56,7 @@ export default function HomePage() {
                 {/* Product Preview */}
                 <section className="px-4 py-14 bg-white flex justify-center">
                     <div className="w-full max-w-5xl rounded-lg overflow-hidden border border-gray-200 shadow-2xl shadow-gray-200/50">
-                        <img src="https://placehold.co/1200x750/E2E8F0/4A5568?text=Sivy+App+Preview" alt="App preview" className="w-full object-cover" />
+                        <img src="/preview.png" alt="App preview" className="w-full object-cover" />
                     </div>
                 </section>
 
